@@ -1,0 +1,4 @@
+---
+realm_domain: ad.devksingh.com
+# It is important that krb5 domain is in ALL CAPITALS
+krb5_default_realm: AD.DEVKSINGH.COM

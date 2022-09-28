@@ -1,0 +1,14 @@
+---
+# limit access to nodes to admin group 
+- name: Load Variables
+  include_vars: "../../domain_join/vars/vars.yml"
+
+- name: Default Deny
+  become: yes
+  shell: /usr/sbin/realm deny --all
+  tags: ad
+
+- name: Permit admin group
+  become: yes
+  shell: /usr/sbin/realm permit -g admin@{{ realm_domain }}
+  tags: ad

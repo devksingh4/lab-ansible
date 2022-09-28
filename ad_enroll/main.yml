@@ -1,0 +1,23 @@
+---
+
+# This playbook joins a linux server (debian/ubuntu) to an active directory domain.
+
+- name: Apply configuration to newly deployed machines
+  hosts: enroll
+  vars_prompt:
+
+    - name: kerberos_user
+      prompt: Enter the username for a user authorized to enroll computers to the AD Forest.
+      private: no
+
+    - name: kerberos_user_password
+      prompt: Enter the password for this user
+
+  roles:
+    - {role: domain_join, become: yes}
+
+
+#- name: Allow direct access from admin group only
+#  hosts: enroll
+#  roles
+#   - {role: admin_only, become: yes}

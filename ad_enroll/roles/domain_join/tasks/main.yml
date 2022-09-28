@@ -1,0 +1,98 @@
+---
+# tasks that run after a new deployment
+
+- name: Load Variables
+  include_vars: "vars.yml"
+
+- name: Remove apt lock file
+  file:
+    state: absent
+    path: "/var/lib/dpkg/lock-frontend"
+  tags: apt
+
+- name: Install AD Domain packages
+  apt: 
+    name:
+      - realmd
+      - sssd
+      - adcli
+      - krb5-user
+      - sssd-tools
+      - samba-common
+      - packagekit
+      - samba-common-bin
+      - samba-libs
+    state: present 
+  tags: ad
+
+- name: Discover realm
+  command: /bin/bash -c "/usr/sbin/realm discover {{ realm_domain }}"
+  register: realm_discover_results
+  tags: ad
+
+- name: Discover realm debug
+  debug: 
+    msg: "{{ realm_discover_results.stdout }}"
+
+# Check for existing AD
+- name: Checking to see if system is already joined to AD
+  command: /bin/bash -c "/usr/sbin/realm list"
+  register: realm_list_results
+  tags: ad
+
+- name: Debug realm_list_results
+  debug:
+    msg: "{{ realm_list_results.stdout }}"
+
+- name: Join system to AD
+  shell: echo "{{ kerberos_user_password }}" | /usr/sbin/realm join {{ realm_domain }} --user={{ kerberos_user }}
+  ignore_errors: yes
+  when: realm_list_results.stdout == ""
+  tags: ad
+
+- name: Copy krb5.conf
+  template: 
+    src: krb5.conf.j2
+    dest: /etc/krb5.conf
+    owner: root
+    group: root
+    mode: 0644
+  tags: ad
+
+- name: Copy sssd.conf
+  template: 
+    src: sssd.conf.j2
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: 0600
+  tags: ad
+
+- name: Copy sshd_config
+  template: 
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: 0644
+  tags: ad
+
+- name: Copy pam common-session
+  template: 
+    src: common-session.j2
+    dest: /etc/pam.d/common-session
+    owner: root
+    group: root
+    mode: 0644
+  tags: ad
+- name: Restart sssd
+  ansible.builtin.service:
+    name: sssd
+    state: restarted
+- name: Restart sshd
+  ansible.builtin.service:
+    name: sshd
+    state: restarted
+- name: chown and chmod conf
+  shell: chown root:root /etc/sssd/sssd.conf && chmod 600 /etc/sssd/sssd.conf
+  tags: ad
